@@ -1,162 +1,188 @@
 package com.smarttoolfactory.indicator
 
+import android.view.animation.DecelerateInterpolator
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.google.accompanist.pager.ExperimentalPagerApi
-import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.PagerState
-import com.google.accompanist.pager.rememberPagerState
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 
 @OptIn(ExperimentalPagerApi::class)
 @Composable
- fun PagerIndicator() {
+fun PagerIndicator(
+    modifier: Modifier = Modifier,
+    pagerState: PagerState,
+    indicatorCount: Int = 7,
+    indicatorSize: Dp = 20.dp,
+    indicatorShape: Shape = CircleShape,
+    space: Dp = 10.dp,
+    activeColor: Color = Color.Red,
+    inActiveColor: Color = Color.LightGray,
+    onClick: (CoroutineScope.(Int) -> Unit)? = null
+) {
 
-    val pagerState: PagerState = rememberPagerState(initialPage = 0)
     val listState = rememberLazyListState()
 
-    val items: List<LazyListItemInfo> by remember {
+
+    var text by remember { mutableStateOf("") }
+
+    Canvas(modifier = Modifier.size(100.dp) ){
+        size
+    }
+
+    val totalWidth: Dp = indicatorSize * indicatorCount + space * (indicatorCount - 1)
+    val widthInPx = LocalDensity.current.run { indicatorSize.toPx() }
+    val totalWidthInPx = LocalDensity.current.run { totalWidth.toPx() }
+
+    val items by remember {
         derivedStateOf {
             listState.layoutInfo.visibleItemsInfo
-//                .filter { it.offset >= 0 }
         }
     }
 
-    val page by remember {
+    val currentItem by remember {
         derivedStateOf {
             pagerState.currentPage
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = 50.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    val itemCount = pagerState.pageCount
+    val currentPageOffset = pagerState.currentPageOffset
 
-        val text = if (items.isEmpty()) {
-            "Page page: $page, offset: ${pagerState.currentPageOffset}"
-        } else {
-            var tempText =
-                "PAGE: $page, offset: ${pagerState.currentPageOffset}, ITEMS: ${items.size}\n"
-            items.forEach {
-                tempText += "index: ${it.index}, offset: ${it.offset}\n"
-            }
-            tempText
+    if (items.isNotEmpty()) {
+        var tempText =
+            "totalWidth: $totalWidthInPx\n" +
+                    "currentPageOffset: $currentPageOffset\n" +
+                    " Item count ${items.size}, currentItem: $currentItem\n"
+
+        items.forEach { lazyListItemInfo ->
+            tempText += "index: ${lazyListItemInfo.index}, " +
+                    "offset: ${lazyListItemInfo.offset}, " +
+                    "size: ${lazyListItemInfo.size}\n"
         }
 
-        BoxWithConstraints(Modifier.width(160.dp)) {
+        text = tempText
+    }
 
-            val maxWidth = constraints.maxWidth
+    val coroutineScope = rememberCoroutineScope()
 
-            val widthInPx = LocalDensity.current.run { 20.dp.toPx() }
-            val coroutineScope = rememberCoroutineScope()
+    LaunchedEffect(key1 = currentItem) {
+        val viewportSize = listState.layoutInfo.viewportSize
+        listState.animateScrollToItem(
+            currentItem,
+            (widthInPx / 2 - viewportSize.width / 2).toInt()
+        )
+    }
 
-            LaunchedEffect(key1 = page) {
+    BoxWithConstraints(Modifier.width(totalWidth)) {
 
-                val viewportSize = listState.layoutInfo.viewportSize
-                println("🔥 SCROLL TO $page, maxWidth:$maxWidth, viewportSize: $viewportSize")
+        LazyRow(
+            modifier = Modifier.border(1.dp, Color.Green),
+            contentPadding = PaddingValues(vertical = space),
 
-
-                items.forEach {
-                    println("Item ${it.index}, offset: ${it.offset}, size: ${it.size}")
-                }
-                listState.animateScrollToItem(page, (widthInPx - viewportSize.width / 2).toInt())
-                val otherItems = listState.layoutInfo.visibleItemsInfo
-                println("---------------------")
-                otherItems.forEach {
-                    println("Item ${it.index}, offset: ${it.offset}, size: ${it.size}")
-                }
-            }
-
-            LazyRow(
-                modifier = Modifier.border(3.dp, Color.Green),
-                contentPadding = PaddingValues(10.dp),
-                state = listState,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                val pageCount = pagerState.pageCount
-                val currentPageOffset = pagerState.currentPageOffset
-
-                items(pageCount) {
-
-                    val isSelected = (it == page)
-
-                    val right = it >= page + 2 && page > 2 && page < 5
-                    val left = it <= page - 2 && page > 2 && it < pageCount - 4
-
-                    val neighbor =
-                        (page > 0 && it == page - 1) || (it == page + 1 && page < pageCount - 2)
-
-                    Box(
-                        modifier = Modifier
-                            .graphicsLayer {
-                                println("⚾️ Modifier index: $it, neighbor: $neighbor, currentPageOffset: $currentPageOffset")
-//                                val scale = 1f
-                                val scale = if (isSelected) {
-                                    1f
-                                } else if (left || right) {
-                                    .5f
-                                } else {
-                                    .8f
-                                }
-                                scaleX = scale
-                                scaleY = scale
-
-                            }
-
-                            .clip(CircleShape)
-                            .size(20.dp)
-                            .background(
-                                if (isSelected) Color.Red else Color.LightGray,
-                                CircleShape
-                            )
-                            .clickable {
-                                coroutineScope.launch {
-                                    pagerState.scrollToPage(it)
-                                }
-                            }
-                    )
-
-                }
-            }
-
-//            Divider(
-//                modifier = Modifier
-//                    .padding(top = 7.dp)
-//                    .width(80.dp)
-//                    .height(3.dp)
-//            )
-
-        }
-        Text(text)
-
-        HorizontalPager(
-            modifier = Modifier.fillMaxHeight(),
-            count = 8,
-            state = pagerState,
+            state = listState,
+            horizontalArrangement = Arrangement.spacedBy(space),
         ) {
-            Text("Text $it", fontSize =60.sp, fontWeight = FontWeight.Bold)
+
+            items(itemCount) { index ->
+
+                val isSelected = (index == currentItem)
+
+                // Index of item in center when odd number of indicators are set
+                // for 5 indicators this is 2nd indicator place
+                val centerItemIndex = indicatorCount / 2
+
+                val right1 =
+                    (currentItem <= centerItemIndex && itemCount > indicatorCount &&
+                            index == indicatorCount - 1)
+
+                val right2 =
+                    (index >= currentItem + centerItemIndex &&
+                            currentItem > centerItemIndex &&
+                            currentItem < indicatorCount - 1)
+
+                val isRightEdgeItem = right1 || right2
+
+                // Check if this item's distance to center item is smaller than half size of
+                // the indicator count when current indicator at the center or
+                // when we reach the end of list. End of the list only one item is on edge
+                // with 10 items and 7 indicators
+                // 7-3= 4th item can be the first valid left edge item and
+                val isLeftEdgeItem =
+                    index <= currentItem - centerItemIndex &&
+                            currentItem > centerItemIndex &&
+                            index < itemCount - indicatorCount + 1
+
+
+                val neighbor =
+                    (currentItem > 0 && index == currentItem - 1) ||
+                            (index == currentItem + 1 && currentItem < itemCount - 2)
+
+
+                println(
+                    "⚾️ LazyRow index: $index, right1: $right1, right2: $right2, " +
+                            "currentPageOffset: $currentPageOffset"
+                )
+
+//                text =
+//                    "index: $index, right1: $right1, right2: $right2, neighbor: $neighbor, " +
+//                            "currentPageOffset: $currentPageOffset"
+
+                Box(
+                    modifier = Modifier
+                        .graphicsLayer {
+
+//                                val scale = 1f
+                            val scale = if (isSelected) {
+                                1f
+                            } else if (isLeftEdgeItem || isRightEdgeItem) {
+                                .5f
+                            } else {
+                                .8f
+                            }
+                            scaleX = scale
+                            scaleY = scale
+
+                        }
+
+                        .clip(indicatorShape)
+                        .size(indicatorSize)
+                        .background(
+                            if (isSelected) activeColor else inActiveColor,
+                            indicatorShape
+                        )
+                        .clickable {
+                            coroutineScope.launch {
+                                onClick?.invoke(this, index)
+                            }
+                        }
+                )
+            }
         }
     }
 
+    Text(text)
+}
+
+private fun getScale(index: Int, currentPage: Int, indicatorCount: Int, itemCount: Int): Float {
+    return 1f
 }
