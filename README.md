@@ -1,5 +1,9 @@
 # Composer Pager Indicator
 
+
+https://user-images.githubusercontent.com/35650605/182871485-4f2551a8-4d57-41aa-b7b1-2e4d8c9dffdb.mp4
+
+
 Indicators for **Horizontal** or **Vertical** pager with different orientation, color,
 size options and optional touch feature.
 
