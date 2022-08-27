@@ -1,4 +1,4 @@
-# Composer Pager Indicator
+# Compose Pager Indicator
 
 [![](https://jitpack.io/v/SmartToolFactory/Compose-PagerIndicator.svg)](https://jitpack.io/#SmartToolFactory/Compose-PagerIndicator)
 
